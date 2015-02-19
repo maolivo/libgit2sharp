@@ -347,7 +347,7 @@ namespace LibGit2Sharp.Tests
                     return true;
                 };
 
-            RepositoryOperationCompleted repositoryOperationCompleted = (x, ex) =>
+            RepositoryOperationCompleted repositoryOperationCompleted = (x) =>
                 {
                     if (currentEntry != null)
                     {
@@ -442,23 +442,16 @@ namespace LibGit2Sharp.Tests
             string relativeSubmodulePath = "submodule_target_wd";
 
             int cancelDepth = 0;
-            Exception recursiveException = null;
 
             RepositoryOperationStarting repositoryOperationStarting = (x) =>
             {
                 return !(x.RecursionDepth >= cancelDepth);
             };
 
-            RepositoryOperationCompleted repositoryOperationCompleted = (x, ex) =>
-            {
-                recursiveException = ex;
-            };
-
             CloneOptions options = new CloneOptions()
             {
                 RecurseSubmodules = true,
                 RepositoryOperationStarting = repositoryOperationStarting,
-                RepositoryOperationCompleted = repositoryOperationCompleted,
             };
 
             Assert.Throws<UserCancelledException>(() =>
@@ -467,7 +460,18 @@ namespace LibGit2Sharp.Tests
             // Cancel after super repository is cloned, but before submodule is cloned.
             cancelDepth = 1;
 
-            string clonedRepoPath = Repository.Clone(uri.AbsolutePath, scd.DirectoryPath, options);
+            string clonedRepoPath = null;
+
+            try
+            {
+                Repository.Clone(uri.AbsolutePath, scd.DirectoryPath, options);
+            }
+            catch(RecurseSubmodulesException ex)
+            {
+                Assert.NotNull(ex.InnerException);
+                Assert.Equal(typeof(UserCancelledException), ex.InnerException.GetType());
+                clonedRepoPath = ex.ParentRepoPath;
+            }
 
             // Verify that the submodule was not initialized.
             using(Repository repo = new Repository(clonedRepoPath))
@@ -476,8 +480,6 @@ namespace LibGit2Sharp.Tests
                 Assert.Equal(SubmoduleStatus.InConfig | SubmoduleStatus.InHead | SubmoduleStatus.InIndex | SubmoduleStatus.WorkDirUninitialized,
                              submoduleStatus);
 
-                Assert.NotNull(recursiveException);
-                Assert.Equal(typeof(UserCancelledException), recursiveException.GetType());
             }
         }
     }

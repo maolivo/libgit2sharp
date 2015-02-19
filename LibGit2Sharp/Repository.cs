@@ -561,7 +561,6 @@ namespace LibGit2Sharp
             Ensure.ArgumentNotNull(workdirPath, "workdirPath");
 
             options = options ?? new CloneOptions();
-            string repoPath;
 
             // context variable that contains information on the repository that
             // we are cloning.
@@ -591,13 +590,15 @@ namespace LibGit2Sharp
                     RemoteCallbacks = gitRemoteCallbacks,
                 };
 
+                string clonedRepoPath;
+
                 try
                 {
                     cloneOpts.CheckoutBranch = StrictUtf8Marshaler.FromManaged(options.BranchName);
 
                     using (RepositorySafeHandle repo = Proxy.git_clone(sourceUrl, workdirPath, ref cloneOpts))
                     {
-                        repoPath = Proxy.git_repository_path(repo).Native;
+                        clonedRepoPath = Proxy.git_repository_path(repo).Native;
                     }
                 }
                 finally
@@ -607,13 +608,19 @@ namespace LibGit2Sharp
 
                 // Notify caller that we are done with the current repository.
                 OnRepositoryOperationCompleted(options.RepositoryOperationCompleted,
-                                               context,
-                                               null);
+                                               context);
 
                 // Recursively clone submodules if requested.
-                RecursivelyCloneSubmodules(options, repoPath, 1);
+                try
+                {
+                    RecursivelyCloneSubmodules(options, clonedRepoPath, 1);
+                }
+                catch (Exception ex)
+                {
+                    throw new RecurseSubmodulesException("The super repository was cloned, but there was an error cloning the submodules.", clonedRepoPath, ex);
+                }
 
-                return repoPath;
+                return clonedRepoPath;
             }
         }
 
@@ -623,10 +630,8 @@ namespace LibGit2Sharp
         /// <param name="options">Options controlling clone behavior.</param>
         /// <param name="repoPath">Path of the parent repository.</param>
         /// <param name="recursionDepth">The current depth of the recursion.</param>
-        private static bool RecursivelyCloneSubmodules(CloneOptions options, string repoPath, int recursionDepth)
+        private static void RecursivelyCloneSubmodules(CloneOptions options, string repoPath, int recursionDepth)
         {
-            bool continueOperation = true;
-
             if (options.RecurseSubmodules)
             {
                 List<string> submodules = new List<string>();
@@ -652,7 +657,7 @@ namespace LibGit2Sharp
                         {
                             continue;
                         }
-
+                        
                         string fullSubmodulePath = Path.Combine(parentRepoWorkDir, sm.Path);
 
                         // Resolve the URL in the .gitmodule file to the one actually used
@@ -665,36 +670,18 @@ namespace LibGit2Sharp
                                                                      sm.Name,
                                                                      recursionDepth);
 
-                        Exception recursiveEx = null;
-                        continueOperation = OnRepositoryOperationStarting(options.RepositoryOperationStarting,
-                                                                          context);
-
-                        if (continueOperation)
-                        {
-                            try
-                            {
-                                repo.Submodules.Update(sm.Name, updateOptions);
-                            }
-                            catch (Exception ex)
-                            {
-                                recursiveEx = ex;
-                                continueOperation = false;
-                            }
-                        }
-                        else
-                        {
-                            // If user has cancelled the operation, then populate the exception
-                            recursiveEx = new UserCancelledException("Clone of submoudule cancelled by user.");
-                        }
-
-                        OnRepositoryOperationCompleted(options.RepositoryOperationCompleted,
-                                                       context,
-                                                       recursiveEx);
+                        bool continueOperation = OnRepositoryOperationStarting(options.RepositoryOperationStarting,
+                                                                               context);
 
                         if (!continueOperation)
                         {
-                            break;
+                            throw new UserCancelledException("Clone of submoudule cancelled by user.");
                         }
+
+                        repo.Submodules.Update(sm.Name, updateOptions);
+
+                        OnRepositoryOperationCompleted(options.RepositoryOperationCompleted,
+                                                       context);
 
                         submodules.Add(Path.Combine(repo.Info.WorkingDirectory, sm.Path));
                     }
@@ -702,22 +689,12 @@ namespace LibGit2Sharp
 
                 // If we are continuing the recursive operation, then
                 // recurse into nested submodules.
-                if (continueOperation)
+                // Check submodules to see if they have their own submodules.
+                foreach (string submodule in submodules)
                 {
-                    // Check submodules to see if they have their own submodules.
-                    foreach (string submodule in submodules)
-                    {
-                        continueOperation = RecursivelyCloneSubmodules(options, submodule, recursionDepth + 1);
-
-                        if (!continueOperation)
-                        {
-                            break;
-                        }
-                    }
+                    RecursivelyCloneSubmodules(options, submodule, recursionDepth + 1);
                 }
             }
-
-            return continueOperation;
         }
 
         /// <summary>
@@ -741,12 +718,11 @@ namespace LibGit2Sharp
         }
 
         private static void OnRepositoryOperationCompleted(RepositoryOperationCompleted repositoryChangedCallback,
-                                                           RepositoryOperationContext context,
-                                                           Exception ex)
+                                                           RepositoryOperationContext context)
         {
             if (repositoryChangedCallback != null)
             {
-                repositoryChangedCallback(context, ex);
+                repositoryChangedCallback(context);
             }
         }
 
