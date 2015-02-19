@@ -1628,7 +1628,11 @@ namespace LibGit2Sharp.Core
         {
             Debug.Assert(index >= 0);
             IntPtr ptr = NativeMethods.git_rebase_operation_byindex(rebase, ((UIntPtr) index));
-            return ptr.MarshalAs<GitRebaseOperation>();
+            GitRebaseOperation operation = ptr.MarshalAs<GitRebaseOperation>();
+
+            // Workaround until 92e87dd74 from libgit2 is consumed by LibGit2#
+            operation.exec = IntPtr.Zero;
+            return operation;
         }
 
         /// <summary>
@@ -1653,6 +1657,9 @@ namespace LibGit2Sharp.Core
 
                 // If successsful, then marshal native struct to managed struct.
                 operation = ptr.MarshalAs<GitRebaseOperation>();
+
+                // Workaround until 92e87dd74 from libgit2 is consumed by LibGit2#
+                operation.exec = IntPtr.Zero;
             }
 
             return operation;
