@@ -675,7 +675,7 @@ namespace LibGit2Sharp
 
                         if (!continueOperation)
                         {
-                            throw new UserCancelledException("Clone of submoudule cancelled by user.");
+                            throw new UserCancelledException("Recursive clone of submodules was cancelled.");
                         }
 
                         repo.Submodules.Update(sm.Name, updateOptions);
