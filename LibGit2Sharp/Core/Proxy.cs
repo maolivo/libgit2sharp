@@ -212,7 +212,7 @@ namespace LibGit2Sharp.Core
                 int res = NativeMethods.git_branch_remote_name(buf, repo, canonical_branch_name);
 
                 if (!shouldThrowIfNotFound &&
-                    (res == (int) GitErrorCode.NotFound || res == (int) GitErrorCode.Ambiguous))
+                    (res == (int)GitErrorCode.NotFound || res == (int)GitErrorCode.Ambiguous))
                 {
                     return null;
                 }
@@ -228,7 +228,7 @@ namespace LibGit2Sharp.Core
             using (var buf = new GitBuf())
             {
                 int res = NativeMethods.git_branch_upstream_name(buf, handle, canonicalReferenceName);
-                if (res == (int) GitErrorCode.NotFound)
+                if (res == (int)GitErrorCode.NotFound)
                 {
                     return null;
                 }
@@ -803,7 +803,7 @@ namespace LibGit2Sharp.Core
 
         public static GitDiffDelta git_diff_get_delta(DiffSafeHandle diff, int idx)
         {
-            return NativeMethods.git_diff_get_delta(diff, (UIntPtr) idx).MarshalAs<GitDiffDelta>(false);
+            return NativeMethods.git_diff_get_delta(diff, (UIntPtr)idx).MarshalAs<GitDiffDelta>(false);
         }
 
         #endregion
@@ -1507,7 +1507,7 @@ namespace LibGit2Sharp.Core
                 {
                     fixed (byte *p = data)
                     {
-                        res = NativeMethods.git_odb_stream_write(stream, (IntPtr) p, (UIntPtr) len);
+                        res = NativeMethods.git_odb_stream_write(stream, (IntPtr)p, (UIntPtr)len);
                     }
                 }
 
@@ -1546,7 +1546,7 @@ namespace LibGit2Sharp.Core
             using (ThreadAffinity())
             {
                 PatchSafeHandle handle;
-                int res = NativeMethods.git_patch_from_diff(out handle, diff, (UIntPtr) idx);
+                int res = NativeMethods.git_patch_from_diff(out handle, diff, (UIntPtr)idx);
                 Ensure.ZeroResult(res);
                 return handle;
             }
@@ -1608,26 +1608,22 @@ namespace LibGit2Sharp.Core
             return rebase;
         }
 
-        public static int git_rebase_operation_entrycount(RebaseSafeHandle rebase)
+        public static long git_rebase_operation_entrycount(RebaseSafeHandle rebase)
         {
-            UIntPtr count = NativeMethods.git_rebase_operation_entrycount(rebase);
-            int entryCountAsInt = (int) count; // What to convert to
-            return entryCountAsInt;
+            return NativeMethods.git_rebase_operation_entrycount(rebase).ConvertToLong();
         }
 
-        public static int git_rebase_operation_current(RebaseSafeHandle rebase)
+        public static long git_rebase_operation_current(RebaseSafeHandle rebase)
         {
-            UIntPtr current = NativeMethods.git_rebase_operation_current(rebase);
-            int currentEntryAsInt = (int) current; // What to convert to
-            return currentEntryAsInt;
+            return NativeMethods.git_rebase_operation_current(rebase).ConvertToLong();
         }
 
         public static GitRebaseOperation git_rebase_operation_byindex(
             RebaseSafeHandle rebase,
-            int index)
+            long index)
         {
             Debug.Assert(index >= 0);
-            IntPtr ptr = NativeMethods.git_rebase_operation_byindex(rebase, ((UIntPtr) index));
+            IntPtr ptr = NativeMethods.git_rebase_operation_byindex(rebase, ((UIntPtr)index));
             GitRebaseOperation operation = ptr.MarshalAs<GitRebaseOperation>();
 
             // Workaround until 92e87dd74 from libgit2 is consumed by LibGit2#
@@ -2011,7 +2007,7 @@ namespace LibGit2Sharp.Core
 
         public static TagFetchMode git_remote_autotag(RemoteSafeHandle remote)
         {
-            return (TagFetchMode) NativeMethods.git_remote_autotag(remote);
+            return (TagFetchMode)NativeMethods.git_remote_autotag(remote);
         }
 
         public static RemoteSafeHandle git_remote_create(RepositorySafeHandle repo, string name, string url)
@@ -2203,7 +2199,7 @@ namespace LibGit2Sharp.Core
                 Ensure.ZeroResult(res);
             }
         }
-        
+
         public static void git_remote_set_pushurl(RemoteSafeHandle remote, string url)
         {
             using (ThreadAffinity())
@@ -2334,7 +2330,7 @@ namespace LibGit2Sharp.Core
             {
                 if (callback == null)
                 {
-                    callback = problem => {};
+                    callback = problem => { };
                 }
 
                 var array = new GitStrArrayNative();
@@ -2854,7 +2850,7 @@ namespace LibGit2Sharp.Core
         {
             using (ThreadAffinity())
             {
-                int res = NativeMethods.git_stash_drop(repo, (UIntPtr) index);
+                int res = NativeMethods.git_stash_drop(repo, (UIntPtr)index);
                 Ensure.BooleanResult(res);
             }
         }
@@ -3583,6 +3579,29 @@ namespace LibGit2Sharp.Core
         internal static int ConvertResultToCancelFlag(bool result)
         {
             return result ? 0 : (int)GitErrorCode.User;
+        }
+    }
+
+    /// <summary>
+    /// Class to hold extension methods used by the proxy class.
+    /// </summary>
+    static class ProxyExtensions
+    {
+        /// <summary>
+        /// Convert a UIntPtr to a long value. Will throw
+        /// exception if there is an overflow.
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static long ConvertToLong(this UIntPtr input)
+        {
+            ulong ulongValue = (ulong)input;
+            if (ulongValue > long.MaxValue)
+            {
+                throw new LibGit2SharpException("value exceeds size of long");
+            }
+
+            return (long)input;
         }
     }
 }
