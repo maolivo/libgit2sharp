@@ -544,12 +544,13 @@ namespace LibGit2Sharp
         /// <summary>
         /// Clone with specified options.
         /// </summary>
-        /// <remarks>
-        /// Exceptions that occur as part of recursing through submodules are not thrown up through
-        /// the calling function. If an exception is raised when recursing through submodules, and
-        /// this exception is not bubbled through the calling function, then it is reported through
-        /// this callback.
-        /// </remarks>
+        /// <exception cref="RecurseSubmodulesException">This exception is thrown when there
+        /// is an error is encountered while recursively cloning submodules. The inner exception
+        /// will contain the original exception. The initially cloned repository would
+        /// be reported through the <see cref="RecurseSubmodulesException.InitialRepositoryPath"/>
+        /// property.</exception>"
+        /// <exception cref="UserCancelledException">Exception thrown when the cancelling
+        /// the clone of the initial repository.</exception>"
         /// <param name="sourceUrl">URI for the remote repository</param>
         /// <param name="workdirPath">Local path to clone into</param>
         /// <param name="options"><see cref="CloneOptions"/> controlling clone behavior</param>
@@ -617,7 +618,10 @@ namespace LibGit2Sharp
                 }
                 catch (Exception ex)
                 {
-                    throw new RecurseSubmodulesException("The super repository was cloned, but there was an error cloning the submodules.", clonedRepoPath, ex);
+                    throw new RecurseSubmodulesException(
+                        "The top level repository was cloned, but there was an error cloning its submodules.",
+                        ex,
+                        clonedRepoPath);
                 }
 
                 return clonedRepoPath;
@@ -650,14 +654,10 @@ namespace LibGit2Sharp
 
                     string parentRepoWorkDir = repo.Info.WorkingDirectory;
 
-                    foreach (var sm in repo.Submodules)
+                    // Iterate through the submodules (where the submodule is in the index),
+                    // and clone them.
+                    foreach (var sm in repo.Submodules.Where(sm => sm.RetrieveStatus().HasFlag(SubmoduleStatus.InIndex)))
                     {
-                        // Only clone submodules that have an entry in the index.
-                        if (!sm.RetrieveStatus().HasFlag(SubmoduleStatus.InIndex))
-                        {
-                            continue;
-                        }
-                        
                         string fullSubmodulePath = Path.Combine(parentRepoWorkDir, sm.Path);
 
                         // Resolve the URL in the .gitmodule file to the one actually used
@@ -708,7 +708,6 @@ namespace LibGit2Sharp
                                                           RepositoryOperationContext context)
         {
             bool continueOperation = true;
-
             if (repositoryChangedCallback != null)
             {
                 continueOperation = repositoryChangedCallback(context);

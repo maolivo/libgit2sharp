@@ -470,7 +470,7 @@ namespace LibGit2Sharp.Tests
             {
                 Assert.NotNull(ex.InnerException);
                 Assert.Equal(typeof(UserCancelledException), ex.InnerException.GetType());
-                clonedRepoPath = ex.ParentRepoPath;
+                clonedRepoPath = ex.InitialRepositoryPath;
             }
 
             // Verify that the submodule was not initialized.
