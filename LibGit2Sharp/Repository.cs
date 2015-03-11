@@ -1077,6 +1077,42 @@ namespace LibGit2Sharp
         }
 
         /// <summary>
+        /// Perform a three-way merge of two commits, looking up their
+        /// commit ancestor. The returned index will contain the results
+        /// of the merge and can be examined for conflicts. The returned
+        /// index must be disposed.
+        /// </summary>
+        /// <param name="ours">The first tree</param>
+        /// <param name="theirs">The second tree</param>
+        /// <param name="options">The <see cref="MergeTreeOptions"/> controlling the merge</param>
+        /// <returns>The <see cref="Index"/> containing the merged trees and any conflicts</returns>
+        public Index MergeCommits(Commit ours, Commit theirs, MergeTreeOptions options)
+        {
+            Ensure.ArgumentNotNull(ours, "ours");
+            Ensure.ArgumentNotNull(theirs, "theirs");
+
+            options = options ?? new MergeTreeOptions();
+
+            var mergeOptions = new GitMergeOpts
+            {
+                Version = 1,
+                MergeFileFavorFlags = options.MergeFileFavor,
+                MergeTreeFlags = options.FindRenames ? GitMergeTreeFlags.GIT_MERGE_TREE_FIND_RENAMES :
+                                                       GitMergeTreeFlags.GIT_MERGE_TREE_NORMAL,
+                RenameThreshold = (uint)options.RenameThreshold,
+                TargetLimit = (uint)options.TargetLimit,
+            };
+
+            using (var oneHandle = Proxy.git_object_lookup(handle, ours.Id, GitObjectType.Commit))
+            using (var twoHandle = Proxy.git_object_lookup(handle, theirs.Id, GitObjectType.Commit))
+            {
+                var indexHandle = Proxy.git_merge_commits(handle, oneHandle, twoHandle, mergeOptions);
+
+                return new Index(this, indexHandle);
+            }
+        }
+
+        /// <summary>
         /// Revert the specified commit.
         /// <para>
         ///  If the revert is successful but there are no changes to commit,

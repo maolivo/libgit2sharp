@@ -99,6 +99,7 @@
     <Compile Include="IndexNameEntry.cs" />
     <Compile Include="MergeOptions.cs" />
     <Compile Include="MergeResult.cs" />
+    <Compile Include="MergeTreeOptions.cs" />
     <Compile Include="NotFoundException.cs" />
     <Compile Include="GitObjectMetadata.cs" />
     <Compile Include="PatchEntryChanges.cs" />

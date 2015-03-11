@@ -236,6 +236,18 @@ namespace LibGit2Sharp
         MergeResult MergeFetchedRefs(Signature merger, MergeOptions options);
 
         /// <summary>
+        /// Perform a three-way merge of two commits, looking up their
+        /// commit ancestor. The returned index will contain the results
+        /// of the merge and can be examined for conflicts. The returned
+        /// index must be disposed.
+        /// </summary>
+        /// <param name="ours">The first tree</param>
+        /// <param name="theirs">The second tree</param>
+        /// <param name="options">The <see cref="MergeTreeOptions"/> controlling the merge</param>
+        /// <returns>The <see cref="Index"/> containing the merged trees and any conflicts</returns>
+        Index MergeCommits(Commit ours, Commit theirs, MergeTreeOptions options);
+
+        /// <summary>
         /// Cherry picks changes from the commit into the branch pointed at by HEAD.
         /// </summary>
         /// <param name="commit">The commit to cherry pick into branch pointed at by HEAD.</param>

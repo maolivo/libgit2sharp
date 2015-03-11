@@ -1073,13 +1073,12 @@ namespace LibGit2Sharp.Core
 
         #region git_merge_
 
-        public static IndexSafeHandle git_merge_trees(RepositorySafeHandle repo, GitObjectSafeHandle ancestorTree, GitObjectSafeHandle ourTree, GitObjectSafeHandle theirTree)
+        public static IndexSafeHandle git_merge_commits(RepositorySafeHandle repo, GitObjectSafeHandle ourCommit, GitObjectSafeHandle theirCommit, GitMergeOpts opts)
         {
             using (ThreadAffinity())
             {
                 IndexSafeHandle index;
-                GitMergeOpts opts = new GitMergeOpts { Version = 1 };
-                int res = NativeMethods.git_merge_trees(out index, repo, ancestorTree, ourTree, theirTree, ref opts);
+                int res = NativeMethods.git_merge_commits(out index, repo, ourCommit, theirCommit, ref opts);
                 Ensure.ZeroResult(res);
 
                 return index;

@@ -679,12 +679,11 @@ namespace LibGit2Sharp.Core
             ref GitCheckoutOpts checkout_opts);
 
         [DllImport(libgit2)]
-        internal static extern int git_merge_trees(
+        internal static extern int git_merge_commits(
             out IndexSafeHandle index,
             RepositorySafeHandle repo,
-            GitObjectSafeHandle ancestor_tree,
-            GitObjectSafeHandle our_tree,
-            GitObjectSafeHandle their_tree,
+            GitObjectSafeHandle our_commit,
+            GitObjectSafeHandle their_commit,
             ref GitMergeOpts merge_opts);
 
         [DllImport(libgit2)]

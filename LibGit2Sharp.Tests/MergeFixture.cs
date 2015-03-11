@@ -749,6 +749,109 @@ namespace LibGit2Sharp.Tests
             }
         }
 
+
+        [Fact]
+        public void CanMergeTreeIntoSameTree()
+        {
+            string path = SandboxMergeTestRepo();
+            using (var repo = new Repository(path))
+            {
+                var master = repo.Branches["master"].Tip;
+
+                using (var index = repo.MergeCommits(master, master, null))
+                {
+                    Assert.True(index.IsFullyMerged);
+                }
+            }
+        }
+
+        [Fact]
+        public void CanMergeTreeIntoTreeFromUnbornBranch()
+        {
+            string path = SandboxMergeTestRepo();
+            using (var repo = new Repository(path))
+            {
+                repo.Refs.UpdateTarget("HEAD", "refs/heads/unborn");
+
+                Touch(repo.Info.WorkingDirectory, "README", "Yeah!\n");
+                repo.Index.Clear();
+                repo.Stage("README");
+
+                repo.Commit("A new world, free of the burden of the history", Constants.Signature, Constants.Signature);
+
+                var master = repo.Branches["master"].Tip;
+                var branch = repo.Branches["unborn"].Tip;
+
+                using (var index = repo.MergeCommits(master, branch, null))
+                {
+                    Assert.True(index.IsFullyMerged);
+                }
+            }
+        }
+
+        [Fact]
+        public void CanMergeCommitsAndDetectConflicts()
+        {
+            string path = SandboxMergeTestRepo();
+            using (var repo = new Repository(path))
+            {
+                repo.Refs.UpdateTarget("HEAD", "refs/heads/unborn");
+
+                repo.Index.Replace(repo.Lookup<Commit>("conflicts"));
+
+                repo.Commit("A conflicting world, free of the burden of the history", Constants.Signature, Constants.Signature);
+
+                var master = repo.Branches["master"].Tip;
+                var branch = repo.Branches["unborn"].Tip;
+
+                using (var index = repo.MergeCommits(master, branch, null))
+                {
+                    Assert.False(index.IsFullyMerged);
+                }
+            }
+        }
+
+        [Fact]
+        public void CanMergeFastForwardTreeWithoutConflicts()
+        {
+            string path = SandboxMergeTestRepo();
+            using (var repo = new Repository(path))
+            {
+                var master = repo.Lookup<Commit>("master");
+                var branch = repo.Lookup<Commit>("fast_forward");
+
+                using (var index = repo.MergeCommits(master, branch, null))
+                {
+                    Assert.True(index.IsFullyMerged);
+                }
+            }
+        }
+
+        [Fact]
+        public void CanIdentifyConflictsInMergeCommits()
+        {
+            string path = SandboxMergeTestRepo();
+            using (var repo = new Repository(path))
+            {
+                var master = repo.Lookup<Commit>("master");
+                var branch = repo.Lookup<Commit>("conflicts");
+
+                var result = repo.ObjectDatabase.CanMergeWithoutConflict(master, branch);
+
+                using (var index = repo.MergeCommits(master, branch, null))
+                {
+                    Assert.False(index.IsFullyMerged);
+
+                    Assert.Equal(1, index.Conflicts.Count());
+
+                    var conflict = index.Conflicts.First();
+                    Assert.Equal(new ObjectId("8e9daea300fbfef6c0da9744c6214f546d55b279"), conflict.Ancestor.Id);
+                    Assert.Equal(new ObjectId("610b16886ca829cebd2767d9196f3c4378fe60b5"), conflict.Ours.Id);
+                    Assert.Equal(new ObjectId("3dd9738af654bbf1c363f6c3bbc323bacdefa179"), conflict.Theirs.Id);
+                }
+            }
+        }
+
         private Commit AddFileCommitToRepo(IRepository repository, string filename, string content = null)
         {
             Touch(repository.Info.WorkingDirectory, filename, content);

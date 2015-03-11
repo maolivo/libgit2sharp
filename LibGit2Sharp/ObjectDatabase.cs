@@ -419,20 +419,9 @@ namespace LibGit2Sharp
             Ensure.ArgumentNotNull(one, "one");
             Ensure.ArgumentNotNull(another, "another");
 
-            using (var ourHandle = Proxy.git_object_peel(repo.Handle, one.Id, GitObjectType.Tree, true))
-            using (var theirHandle = Proxy.git_object_peel(repo.Handle, another.Id, GitObjectType.Tree, true))
+            using (var index = repo.MergeCommits(one, another, null))
             {
-                var ancestorCommit = FindMergeBase(one, another);
-
-                var ancestorHandle = ancestorCommit != null
-                    ? Proxy.git_object_peel(repo.Handle, ancestorCommit.Id, GitObjectType.Tree, false)
-                    : new NullGitObjectSafeHandle();
-
-                using (ancestorHandle)
-                using (var indexHandle = Proxy.git_merge_trees(repo.Handle, ancestorHandle, ourHandle, theirHandle))
-                {
-                    return !Proxy.git_index_has_conflicts(indexHandle);
-                }
+                return index.IsFullyMerged;
             }
         }
 

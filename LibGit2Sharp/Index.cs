@@ -15,7 +15,7 @@ namespace LibGit2Sharp
     /// It's used to prepare and aggregate the changes that will be part of the next commit.
     /// </summary>
     [DebuggerDisplay("{DebuggerDisplay,nq}")]
-    public class Index : IEnumerable<IndexEntry>
+    public class Index : IEnumerable<IndexEntry>, IDisposable
     {
         private readonly IndexSafeHandle handle;
         private readonly Repository repo;
@@ -46,6 +46,23 @@ namespace LibGit2Sharp
             conflicts = new ConflictCollection(this);
 
             repo.RegisterForCleanup(handle);
+        }
+
+        internal Index(Repository repo, IndexSafeHandle handle)
+        {
+            this.repo = repo;
+            this.handle = handle;
+
+            IsTransientIndex = true;
+            conflicts = new ConflictCollection(this);
+
+            repo.RegisterForCleanup(handle);
+        }
+
+        internal virtual bool IsTransientIndex
+        {
+            get;
+            private set;
         }
 
         internal IndexSafeHandle Handle
@@ -331,6 +348,19 @@ namespace LibGit2Sharp
 
             var changes = repo.Diff.Compare<TreeChanges>(commit.Tree, DiffTargets.Index, paths, explicitPathsOptions, new CompareOptions { Similarity = SimilarityOptions.None });
             Replace(changes);
+        }
+
+        /// <summary>
+        /// Disposes the Index, provided it is not the Repository's index,
+        /// and was generated (for example, by merge).  If it is the
+        /// Repository's index, this has no effect.
+        /// </summary>
+        public void Dispose()
+        {
+            if (IsTransientIndex)
+            {
+                handle.Dispose();
+            }
         }
     }
 }
