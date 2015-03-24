@@ -79,6 +79,8 @@
     <Compile Include="Core\Handles\IndexReucEntrySafeHandle.cs" />
     <Compile Include="EntryExistsException.cs" />
     <Compile Include="FetchOptionsBase.cs" />
+    <Compile Include="Hook.cs" />
+    <Compile Include="HookCollection.cs" />
     <Compile Include="IBelongToARepository.cs" />
     <Compile Include="Identity.cs" />
     <Compile Include="IndexNameEntryCollection.cs" />

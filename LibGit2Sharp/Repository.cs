@@ -34,6 +34,7 @@ namespace LibGit2Sharp
         private readonly Ignore ignore;
         private readonly SubmoduleCollection submodules;
         private readonly Lazy<PathCase> pathCase;
+        private readonly Lazy<HookCollection> hooks;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Repository"/> class, providing ooptional behavioral overrides through <paramref name="options"/> parameter.
@@ -121,6 +122,7 @@ namespace LibGit2Sharp
                 ignore = new Ignore(this);
                 network = new Lazy<Network>(() => new Network(this));
                 pathCase = new Lazy<PathCase>(() => new PathCase(this));
+                hooks = new Lazy<HookCollection>(() => new HookCollection(this));
                 submodules = new SubmoduleCollection(this);
 
                 EagerlyLoadComponentsWithSpecifiedPaths(options);
@@ -334,6 +336,14 @@ namespace LibGit2Sharp
         public NoteCollection Notes
         {
             get { return notes; }
+        }
+
+        /// <summary>
+        /// Hooks in the repository.
+        /// </summary>
+        public HookCollection Hooks
+        {
+            get { return hooks.Value; }
         }
 
         /// <summary>
